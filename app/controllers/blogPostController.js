@@ -1,0 +1,133 @@
+import { BlogPost } from "../models/blogPostModel.js";
+
+export async function createPost(req, res) {
+  const { title, content, tags, action } = req.body;
+
+  const status = action === "publish" ? "published" : "draft";
+
+  const post = await BlogPost.create({
+    title,
+    content,
+    tags,
+    status,
+    author: req.user._id,
+  });
+
+  res.status(201).json(post);
+}
+
+export async function getPosts(req, res) {
+  const posts = await BlogPost.find({ status: "published" })
+    .populate("author", "name")
+    .sort({ createdAt: -1 });
+
+  res.json(posts);
+}
+
+export async function getPost(req, res) {
+  const post = await BlogPost.findById(req.params.id)
+    .populate("author", "name email");
+
+  if (!post) {
+    return res.status(404).json({ error: "Post not found" });
+  }
+
+  if (post.status !== "published") {
+    if (!req.user || post.author.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+  }
+
+  res.json(post);
+}
+
+
+export async function getMyPosts(req, res) {
+  const drafts = await BlogPost.find({
+    author: req.user._id,
+    status: "draft",
+  }).sort({ createdAt: -1 });
+
+  const published = await BlogPost.find({
+    author: req.user._id,
+    status: "published",
+  }).sort({ createdAt: -1 });
+
+  const archived = await BlogPost.find({
+    author: req.user._id,
+    status: "archived",
+  }).sort({ createdAt: -1 });
+
+  res.json({ drafts, published, archived });
+}
+
+
+export async function publishPost(req, res) {
+  const post = await BlogPost.findById(req.params.id);
+
+  if (!post)
+    return res.status(404).json({ error: "Post not found" });
+
+  if (post.author.toString() !== req.user._id.toString())
+    return res.status(403).json({ error: "Unauthorized" });
+
+  if (post.status === "published")
+    return res.status(400).json({ error: "Already published" });
+
+  post.status = "published";
+  await post.save();
+
+  res.json({ message: "Post published" });
+}
+
+
+export async function archivePost(req, res) {
+  const post = await BlogPost.findById(req.params.id);
+
+  if (!post)
+    return res.status(404).json({ error: "Post not found" });
+
+  if (post.author.toString() !== req.user._id.toString())
+    return res.status(403).json({ error: "Unauthorized" });
+
+  if (post.status !== "published")
+    return res.status(400).json({ error: "Only published posts can be archived" });
+
+  post.status = "archived";
+  await post.save();
+
+  res.json({ message: "Post archived" });
+}
+
+export async function updatePost(req, res) {
+  const post = await BlogPost.findById(req.params.id);
+
+  if (!post)
+    return res.status(404).json({ error: "Post not found" });
+
+  if (post.author.toString() !== req.user._id.toString())
+    return res.status(403).json({ error: "Unauthorized" });
+
+  if (post.status !== "draft")
+    return res.status(400).json({ error: "Only drafts can be edited" });
+
+  Object.assign(post, req.body);
+  await post.save();
+
+  res.json(post);
+}
+
+
+export async function deletePost(req, res) {
+  const post = await BlogPost.findById(req.params.id);
+
+  if (!post)
+    return res.status(404).json({ error: "Post not found" });
+
+  if (post.author.toString() !== req.user._id.toString())
+    return res.status(403).json({ error: "Unauthorized" });
+
+  await post.deleteOne();
+
+  res.json({ message: "Post permanently deleted" });
+}
