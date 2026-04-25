@@ -1,4 +1,5 @@
 import { BlogPost } from "../models/blogPostModel.js";
+import { Comment } from "../models/commentModel.js";
 
 export async function createPost(req, res) {
   const { title, content, tags, action } = req.body;
@@ -21,16 +22,27 @@ export async function getPosts(req, res) {
     .populate("author", "name")
     .sort({ createdAt: -1 });
 
-  res.json(posts);
+  const postsWithComments = await Promise.all(
+    posts.map(async (post) => {
+      const comments = await Comment.find({ post: post._id })
+        .populate("author", "name")
+        .sort({ createdAt: -1 });
+
+      return {
+        ...post.toObject(),
+        comments,
+      };
+    })
+  );
+
+  res.json(postsWithComments);
 }
 
 export async function getPost(req, res) {
-  const post = await BlogPost.findById(req.params.id)
-    .populate("author", "name email");
+  const post = await BlogPost.findById(req.params.id);
 
-  if (!post) {
+  if (!post)
     return res.status(404).json({ error: "Post not found" });
-  }
 
   if (post.status !== "published") {
     if (!req.user || post.author.toString() !== req.user._id.toString()) {
@@ -38,9 +50,17 @@ export async function getPost(req, res) {
     }
   }
 
-  res.json(post);
-}
+  await post.populate("author", "name email");
 
+  const comments = await Comment.find({ post: post._id })
+    .populate("author", "name")
+    .sort({ createdAt: -1 });
+
+  res.json({
+    ...post.toObject(),
+    comments,
+  });
+}
 
 export async function getMyPosts(req, res) {
   const drafts = await BlogPost.find({
@@ -61,7 +81,6 @@ export async function getMyPosts(req, res) {
   res.json({ drafts, published, archived });
 }
 
-
 export async function publishPost(req, res) {
   const post = await BlogPost.findById(req.params.id);
 
@@ -80,7 +99,6 @@ export async function publishPost(req, res) {
   res.json({ message: "Post published" });
 }
 
-
 export async function archivePost(req, res) {
   const post = await BlogPost.findById(req.params.id);
 
@@ -91,7 +109,9 @@ export async function archivePost(req, res) {
     return res.status(403).json({ error: "Unauthorized" });
 
   if (post.status !== "published")
-    return res.status(400).json({ error: "Only published posts can be archived" });
+    return res.status(400).json({
+      error: "Only published posts can be archived",
+    });
 
   post.status = "archived";
   await post.save();
@@ -109,14 +129,20 @@ export async function updatePost(req, res) {
     return res.status(403).json({ error: "Unauthorized" });
 
   if (post.status !== "draft")
-    return res.status(400).json({ error: "Only drafts can be edited" });
+    return res.status(400).json({
+      error: "Only drafts can be edited",
+    });
 
-  Object.assign(post, req.body);
+  const { title, content, tags } = req.body;
+
+  if (title !== undefined) post.title = title;
+  if (content !== undefined) post.content = content;
+  if (tags !== undefined) post.tags = tags;
+
   await post.save();
 
   res.json(post);
 }
-
 
 export async function deletePost(req, res) {
   const post = await BlogPost.findById(req.params.id);
@@ -126,6 +152,8 @@ export async function deletePost(req, res) {
 
   if (post.author.toString() !== req.user._id.toString())
     return res.status(403).json({ error: "Unauthorized" });
+
+  await Comment.deleteMany({ post: post._id });
 
   await post.deleteOne();
 

@@ -1,7 +1,8 @@
 import express from "express";
 import cookieParser from "cookie-parser";
 import authRouter from "./routes/authRoutes.js";
-import blogPostRouter from "./routes/blogPostRouter.js";
+import blogPostRouter from "./routes/blogPostRoutes.js";
+import commentRouter from "./routes/commentRoutes.js";
 
 const app = express();
 
@@ -9,6 +10,7 @@ app.use(cookieParser());
 app.use(express.json());
 
 app.use("/auth", authRouter);
-app.use("/post", blogPostRouter)
+app.use("/post", blogPostRouter);
+app.use("/comments", commentRouter);
 
 export default app;
