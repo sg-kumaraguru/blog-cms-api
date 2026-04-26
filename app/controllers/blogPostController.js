@@ -1,7 +1,8 @@
 import { BlogPost } from "../models/blogPostModel.js";
 import { Comment } from "../models/commentModel.js";
+import { asyncHandler } from "../utils/asyncUtils.js";
 
-export async function createPost(req, res) {
+export const createPost = asyncHandler(async (req, res) => {
   const { title, content, tags, action } = req.body;
 
   const status = action === "publish" ? "published" : "draft";
@@ -15,9 +16,9 @@ export async function createPost(req, res) {
   });
 
   res.status(201).json(post);
-}
+});
 
-export async function getPosts(req, res) {
+export const getPosts = asyncHandler(async (req, res) => {
   const posts = await BlogPost.find({ status: "published" })
     .populate("author", "name")
     .sort({ createdAt: -1 });
@@ -36,9 +37,9 @@ export async function getPosts(req, res) {
   );
 
   res.json(postsWithComments);
-}
+});
 
-export async function getPost(req, res) {
+export const getPost = asyncHandler(async (req, res) => {
   const post = await BlogPost.findById(req.params.id);
 
   if (!post)
@@ -60,9 +61,9 @@ export async function getPost(req, res) {
     ...post.toObject(),
     comments,
   });
-}
+});
 
-export async function getMyPosts(req, res) {
+export const getMyPosts = asyncHandler(async (req, res) => {
   const drafts = await BlogPost.find({
     author: req.user._id,
     status: "draft",
@@ -79,9 +80,9 @@ export async function getMyPosts(req, res) {
   }).sort({ createdAt: -1 });
 
   res.json({ drafts, published, archived });
-}
+});
 
-export async function publishPost(req, res) {
+export const publishPost = asyncHandler(async (req, res) => {
   const post = await BlogPost.findById(req.params.id);
 
   if (!post)
@@ -97,9 +98,9 @@ export async function publishPost(req, res) {
   await post.save();
 
   res.json({ message: "Post published" });
-}
+});
 
-export async function archivePost(req, res) {
+export const archivePost = asyncHandler(async (req, res) => {
   const post = await BlogPost.findById(req.params.id);
 
   if (!post)
@@ -117,9 +118,9 @@ export async function archivePost(req, res) {
   await post.save();
 
   res.json({ message: "Post archived" });
-}
+});
 
-export async function updatePost(req, res) {
+export const updatePost = asyncHandler(async (req, res) => {
   const post = await BlogPost.findById(req.params.id);
 
   if (!post)
@@ -142,9 +143,9 @@ export async function updatePost(req, res) {
   await post.save();
 
   res.json(post);
-}
+});
 
-export async function deletePost(req, res) {
+export const deletePost = asyncHandler(async (req, res) => {
   const post = await BlogPost.findById(req.params.id);
 
   if (!post)
@@ -154,8 +155,7 @@ export async function deletePost(req, res) {
     return res.status(403).json({ error: "Unauthorized" });
 
   await Comment.deleteMany({ post: post._id });
-
   await post.deleteOne();
 
   res.json({ message: "Post permanently deleted" });
-}
+});

@@ -1,7 +1,8 @@
 import { Comment } from "../models/commentModel.js";
 import { BlogPost } from "../models/blogPostModel.js";
+import { asyncHandler } from "../utils/asyncUtils.js";
 
-export async function createComment(req, res) {
+export const createComment = asyncHandler(async (req, res) => {
   const post = await BlogPost.findById(req.params.postId);
 
   if (!post || post.status !== "published")
@@ -14,9 +15,9 @@ export async function createComment(req, res) {
   });
 
   res.status(201).json(comment);
-}
+});
 
-export async function deleteComment(req, res) {
+export const deleteComment = asyncHandler(async (req, res) => {
   const comment = await Comment.findById(req.params.id);
 
   if (!comment)
@@ -28,9 +29,9 @@ export async function deleteComment(req, res) {
   await comment.deleteOne();
 
   res.json({ message: "Comment deleted" });
-}
+});
 
-export async function getMyComments(req, res) {
+export const getMyComments = asyncHandler(async (req, res) => {
   const comments = await Comment.find({ author: req.user._id })
     .populate("post", "title")
     .sort({ createdAt: -1 });
@@ -44,4 +45,4 @@ export async function getMyComments(req, res) {
       createdAt: c.createdAt,
     }))
   );
-}
+});
