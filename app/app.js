@@ -1,6 +1,7 @@
 import express from "express"
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
+import cors from "cors";
 
 import {errorHandler} from "./middlewares/errorMiddleware.js"
 import { globalLimiter, authLimiter } from "./middlewares/rateLimitMiddleware.js";
@@ -10,6 +11,11 @@ import blogPostRouter from "./routes/blogPostRoutes.js";
 import commentRouter from "./routes/commentRoutes.js";
 
 const app = express();
+
+app.use(cors({
+  origin: "http://localhost:5173",
+  credentials: true,
+}));
 
 app.use(helmet());
 app.disable("x-powered-by");
