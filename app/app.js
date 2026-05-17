@@ -5,6 +5,7 @@ import cors from "cors";
 
 import {errorHandler} from "./middlewares/errorMiddleware.js"
 import { globalLimiter, authLimiter } from "./middlewares/rateLimitMiddleware.js";
+import logger from "./middlewares/loggerMiddleware.js"
 
 import authRouter from "./routes/authRoutes.js";
 import blogPostRouter from "./routes/blogPostRoutes.js";
@@ -19,6 +20,12 @@ app.use(cors({
 
 app.use(helmet());
 app.disable("x-powered-by");
+
+app.use(
+  logger({
+    logBody: true,
+  })
+);
 
 app.use(globalLimiter);
 
